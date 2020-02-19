@@ -12,8 +12,6 @@ library(utf8)
 library(corpus)
 library(ggwordcloud)
 library(plm)
-library(tikzDevice)
-library(xtable)
 
 oldloc <- Sys.getlocale("LC_CTYPE") #encoding may need to be changed to account for Russian, we are preserving original ("English_United States.1252")
 
