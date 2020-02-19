@@ -12,8 +12,6 @@ library(utf8)
 library(corpus)
 library(ggwordcloud)
 library(plm)
-library(tikzDevice)
-library(xtable)
 
 #loading scraped cases
 
