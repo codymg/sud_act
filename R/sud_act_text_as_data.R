@@ -178,10 +178,6 @@ tf_idf <- token_df %>%
   count(stem, sort = TRUE) %>%
   filter(nchar(stem) > 2) %>%
   #filter(!stem %in% c("")) %>%
-<<<<<<< HEAD
-=======
-  #left_join(sentiments %>% filter(lexicon == "nrc"), by = c("lemmas" = "word")) needs russian sentiment lexicon
->>>>>>> 18e9ef270825eca0f3bd7683065e9ee1cf224087
   group_by(id, judge, stem) %>%
   summarise(n = n()) %>%
   bind_tf_idf(stem, id, n) %>%
