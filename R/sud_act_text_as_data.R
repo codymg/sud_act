@@ -29,11 +29,13 @@ sample_df$clean_doc <- sample_df$doc[1:8] %>%
   gsub("\\s+", " ", .) %>% #reduce to only single spaces
   gsub("\\sfunction.*", "", .) %>% #remove html code
   str_to_lower(.) %>% # converting to lower case
-  str_replace_all("\n","") %>% #removing all lines
+  str_replace_all("\n","") #%>% #removing all lines
   #gsub("", "", .) remove any specific words
   
 # gsub("\\s[\u0410-\u044f]{1,2}\\s", " ", .) #if used 3 times it removes all prepositions/single letter characters that dont belong while maintaining word seperation
   
+sample_df$clean_doc[1]
+
 #tokenizing 
   
 token_df <- data.frame(txt = sample_df$clean_doc, stringsAsFactors = FALSE)
@@ -46,6 +48,7 @@ count_test <- token_df %>%
   tidytext::unnest_tokens(word, txt) %>% 
   anti_join(stopwrds, by = c("word" = "words")) %>% #removing stop words based on snowball set
   count(word, sort = TRUE) %>% 
+  filter(nchar(word) > 2) %>%
   #filter(!word %in% c()) %>% #filtering out non-meaningful words
   arrange(desc(n)) %>%
   head(25) #produces in UTF-8
@@ -60,6 +63,7 @@ stems <- token_df %>%
   anti_join(stopwrds, by = c("word" = "words")) %>% #removing stop words based on snowball set
   mutate(stem = wordStem(word, language = "russian")) %>% #getting only stems
   count(stem, sort = TRUE) %>%
+  filter(nchar(stem) > 2) %>%
   # filter(!stem %in% c()) %>% #filtering out non-meaningful words
   head(25) #produces in UTF-8
 
@@ -86,7 +90,10 @@ lemmas$lemma <- gsub("c\\(|\\'|,|\"", "", lemmas$lemma) #removing strange lemmas
 lms <- lemmas %>% 
   select(lemma) %>%
   count(lemma, sort = TRUE) %>%
-  filter(!lemma %in% c("c(",",","", "<U+0433>", "<U+0433><U+043E><U+0434><U+0430>", "<U+0441><U+0442>", "<U+0433><U+043E><U+0434>", "<U+043C><U+043C>", "<U+0434><U+0434>", "<U+0444><U+0438><U+043E>", "<U+0441><U+0443><U+0434><U+0430>", "<U+0442><U+0430><U+043A><U+0436><U+0435>", "<U+043F>", "<U+0438><U+0432><U+0441>", "<U+0434><U+0435><U+043B><U+0430>")) %>% #filtering out unwanted lemmas
+  filter(!lemma %in% c("c(",",","", "<U+0433>", "<U+0433><U+043E><U+0434><U+0430>", "<U+0441><U+0442>", 
+                       "<U+0433><U+043E><U+0434>", "<U+043C><U+043C>", "<U+0434><U+0434>", "<U+0444><U+0438><U+043E>", 
+                       "<U+0441><U+0443><U+0434><U+0430>", "<U+0442><U+0430><U+043A><U+0436><U+0435>", "<U+043F>", 
+                       "<U+0438><U+0432><U+0441>", "<U+0434><U+0435><U+043B><U+0430>")) %>% #filtering out unwanted lemmas
   head(25) #prints in confusing unicode
 
 lms$lemma <- gsub("><", " ", lms$lemma) #formatting to get to correct unicode
@@ -95,7 +102,9 @@ lms$lemma <- gsub("\\s", "\\\\", lms$lemma)
 lms$lemma <- paste0("\\", lms$lemma)
 lms$lemma <- stringi::stri_unescape_unicode(gsub("\\U","\\u", lms$lemma, fixed=TRUE)) #prints correct unicode
 
-lms %>% as.data.frame(.) %>%
+lms %>% 
+  as.data.frame(.) %>% 
+  filter(nchar(lemma) > 3) %>%
   print.corpus_frame(.) #prints lemmatization counts
 
 
@@ -139,7 +148,7 @@ cloud_stem
 cloud_lemm <- ggplot(as.data.frame(lms) %>% #stems
                        group_by(lemma) %>%
                        summarize(count = n()) %>%
-                       filter(nchar(lemma)>3, str_detect(lemma,"^[\u0410-\u04FF]")) %>%
+                       filter(nchar(lemma) > 3, str_detect(lemma,"^[\u0410-\u04FF]")) %>%
                        top_n(25, count) %>%
                        mutate(count = count/sum(count)) %>%
                        arrange(desc(count)) %>%
@@ -161,6 +170,8 @@ cloud_lemm
 
 token_df$id <- paste(sample_df$test_judge, sample_df$id, sep = "_")
 
+token_df$judge <- sample_df$test_judge
+
 tf_idf <- token_df %>%
   group_by(id, judge) %>%
   tidytext::unnest_tokens(word, txt) %>%
@@ -168,15 +179,14 @@ tf_idf <- token_df %>%
   mutate(stem = wordStem(word, language = "russian")) %>% #getting only stems
   count(stem, sort = TRUE) %>%
   filter(nchar(stem) > 2) %>%
-  #filter(!stem %in% c("????", "??", "??????", "????", "????", "????????", "??????", "????????", "??????", "??", "??????????", "??????????")) %>%
-  #left_join(sentiments %>% filter(lexicon == "nrc"), by = c("lemmas" = "word")) needs russian sentiment lexicon
+  #filter(!stem %in% c("")) %>%
   group_by(id, judge, stem) %>%
   summarise(n = n()) %>%
   bind_tf_idf(stem, id, n) %>%
   arrange(desc(judge)) %>%
   arrange(desc(n))
 
-tf_idf %>% head(20) %>% print.corpus_frame()
+tf_idf %>% head(10) %>% print.corpus_frame()
 
 tf_idf2 <- tf_idf %>%  
   arrange(id, desc(tf)) %>%
@@ -186,9 +196,12 @@ tf_idf2 <- tf_idf %>%
   arrange(id, tf) %>%
   mutate(.r = row_number()) 
 
-tf_idf2 %>% head(20) %>% print.corpus_frame()
+tf_idf2 %>% head(10) %>% print.corpus_frame()
 
-tf_idf_plot <- ggplot(tf_idf2[tf_idf2$judge == "",], aes(x =.r, y = tf_idf)) +
+tf_idf2 %>%
+  distinct(id)
+
+tf_idf_plot <- ggplot(tf_idf2[tf_idf2$judge == "?????????????? ??.??. (??????????)",], aes(x =.r, y = tf_idf)) +
   facet_wrap(~ id,
              scales = "free_y") + 
   geom_col() + 
@@ -198,10 +211,10 @@ tf_idf_plot <- ggplot(tf_idf2[tf_idf2$judge == "",], aes(x =.r, y = tf_idf)) +
     labels = tf_idf2$stem) + 
   theme_bw()
 
+tf_idf_plot
 
-pdf("~/tf_idf.pdf", height=5, width=5, encoding = "CP1251.enc")
 
-ggplot(tf_idf2[tf_idf2$judge == "",], aes(x =.r, y = tf_idf)) +
+ggplot(tf_idf2[tf_idf2$judge == "???????????????????? ?????????? ???????????????????? (??????????)",], aes(x =.r, y = tf_idf)) +
   facet_wrap(~ id,
              scales = "free_y") + 
   geom_col() + 
@@ -210,56 +223,3 @@ ggplot(tf_idf2[tf_idf2$judge == "",], aes(x =.r, y = tf_idf)) +
     breaks = tf_idf2$.r, 
     labels = tf_idf2$stem) +
   theme_bw()
-
-dev.off()
-
-
-##############################
-##############################
-#simple statistical models
-##############################
-##############################
-
-lmmodel <- lm(test_decision_state_binary ~ test_court_distance, data = sample_df)
-
-lmmodel <- lmtest::coeftest(lmmodel, vcov=vcovHC(lmmodel, type="HC2", cluster = "group")) 
-
-modellm <- data.frame(tidy(lmmodel)[2,], variable = 1, lbl = "Distance") 
-
-logmodel <- glm(test_decision_state_binary ~ test_court_distance, family = binomial(link = "logit"), data = sample_df)
-
-logmodel <- lmtest::coeftest(logmodel, vcov=vcovHC(logmodel, type="HC2", cluster = "group")) 
-
-modellog <- data.frame(tidy(logmodel)[2,], variable = 2, lbl = "Distance") 
-
-probmodel <- glm(test_decision_state_binary ~ test_court_distance, family = binomial(link = "probit"), data = sample_df)
-
-probmodel <- lmtest::coeftest(probmodel, vcov=vcovHC(probmodel, type="HC2", cluster = "group")) 
-
-modelprob <- data.frame(tidy(probmodel)[2,], variable = 3, lbl = "Distance") 
-
-
-plot_data <- rbind.data.frame(modellm, modellog, modelprob, stringsAsFactors = FALSE)
-
-brks <- c(1,2,3)
-
-lbls <- c("LM", "Logit", "Probit")
-
-
-pdf("~/coeff.pdf", height=6, width=6)
-
-ggplot(data = plot_data, aes(x = variable, y = estimate)) +
-  geom_point() +
-  geom_linerange(aes(ymin = estimate - 1.65 * std.error, ymax = estimate + 1.65 * std.error),
-                 lwd = 1.5) + 
-  geom_errorbar(aes(ymin = estimate - 1.96 * std.error, ymax = estimate + 1.96 * std.error),
-                width = .1) + 
-  geom_hline(yintercept = 0, linetype = 2) +
-  labs(subtitle = "Effect of Distance from the Executive on Court Decisions in Russia") + 
-  scale_x_continuous(expression(Model~Type), 
-                     breaks = brks, labels = lbls) + 
-  scale_y_continuous(expression(Likelihood~of~Decisions~For~the~State)) +
-  coord_cartesian(xlim = c(1,3)) + 
-  theme_bw()
-
-dev.off()
