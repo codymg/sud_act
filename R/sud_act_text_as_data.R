@@ -12,8 +12,6 @@ library(utf8)
 library(corpus)
 library(ggwordcloud)
 library(plm)
-library(tikzDevice)
-library(xtable)
 
 #loading scraped cases
 
@@ -180,6 +178,10 @@ tf_idf <- token_df %>%
   count(stem, sort = TRUE) %>%
   filter(nchar(stem) > 2) %>%
   #filter(!stem %in% c("")) %>%
+<<<<<<< HEAD
+=======
+  #left_join(sentiments %>% filter(lexicon == "nrc"), by = c("lemmas" = "word")) needs russian sentiment lexicon
+>>>>>>> 18e9ef270825eca0f3bd7683065e9ee1cf224087
   group_by(id, judge, stem) %>%
   summarise(n = n()) %>%
   bind_tf_idf(stem, id, n) %>%
@@ -222,4 +224,61 @@ ggplot(tf_idf2[tf_idf2$judge == "???????????????????? ?????????? ???????????????
   scale_x_continuous(
     breaks = tf_idf2$.r, 
     labels = tf_idf2$stem) +
+<<<<<<< HEAD
   theme_bw()
+=======
+  theme_bw()
+
+dev.off()
+
+
+##############################
+##############################
+#simple statistical models
+##############################
+##############################
+
+lmmodel <- lm(test_decision_state_binary ~ test_court_distance, data = sample_df)
+
+lmmodel <- lmtest::coeftest(lmmodel, vcov=vcovHC(lmmodel, type="HC2", cluster = "group")) 
+
+modellm <- data.frame(tidy(lmmodel)[2,], variable = 1, lbl = "Distance") 
+
+logmodel <- glm(test_decision_state_binary ~ test_court_distance, family = binomial(link = "logit"), data = sample_df)
+
+logmodel <- lmtest::coeftest(logmodel, vcov=vcovHC(logmodel, type="HC2", cluster = "group")) 
+
+modellog <- data.frame(tidy(logmodel)[2,], variable = 2, lbl = "Distance") 
+
+probmodel <- glm(test_decision_state_binary ~ test_court_distance, family = binomial(link = "probit"), data = sample_df)
+
+probmodel <- lmtest::coeftest(probmodel, vcov=vcovHC(probmodel, type="HC2", cluster = "group")) 
+
+modelprob <- data.frame(tidy(probmodel)[2,], variable = 3, lbl = "Distance") 
+
+
+plot_data <- rbind.data.frame(modellm, modellog, modelprob, stringsAsFactors = FALSE)
+
+brks <- c(1,2,3)
+
+lbls <- c("LM", "Logit", "Probit")
+
+
+pdf("~/coeff.pdf", height=6, width=6)
+
+ggplot(data = plot_data, aes(x = variable, y = estimate)) +
+  geom_point() +
+  geom_linerange(aes(ymin = estimate - 1.65 * std.error, ymax = estimate + 1.65 * std.error),
+                 lwd = 1.5) + 
+  geom_errorbar(aes(ymin = estimate - 1.96 * std.error, ymax = estimate + 1.96 * std.error),
+                width = .1) + 
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(subtitle = "Effect of Distance from the Executive on Court Decisions in Russia") + 
+  scale_x_continuous(expression(Model~Type), 
+                     breaks = brks, labels = lbls) + 
+  scale_y_continuous(expression(Likelihood~of~Decisions~For~the~State)) +
+  coord_cartesian(xlim = c(1,3)) + 
+  theme_bw()
+
+dev.off()
+>>>>>>> 18e9ef270825eca0f3bd7683065e9ee1cf224087
