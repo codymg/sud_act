@@ -17,7 +17,6 @@ library(xtable)
 
 oldloc <- Sys.getlocale("LC_CTYPE") #encoding may need to be changed to account for Russian, we are preserving original ("English_United States.1252")
 
-
 base_url <- "http://sudact.ru/regular/doc_ajax/?page="
 
 case_links <- paste0(base_url, 1:3, sep = "")
@@ -26,7 +25,7 @@ case_links_full <- paste0(case_links,"&regular-txt=%D0%B5%D0%B2%D1%80%D0%BE%D0%B
 
 case_links_full[1]
 
-json_df <- lapply(case_links_full, read_json) #reading in json and must prove one is not a robot
+json_df <- lapply(case_links_full, read_json) #reading in json and must first go to link and first prove one is not a robot
 
 content <- lapply(json_df, "[[",1) #extracting content from json to read in
 
@@ -48,15 +47,6 @@ test <- content %>%
   bind_rows() %>%
   mutate(website_url = paste0("http://www.sudact.ru", website_url, sep = ""))
 
-#Need to find way to automate this to do more than 8 cases at a time. The code below should pull the text of all the documents but the Captcha seems to be activated when there are more than 8 being pulled
-
-#docs <- test$website_url %>% 
-#map(read_html) %>%
-#map(function (node) {data.frame(doc = node %>% 
-#                                  html_nodes(xpath = "//td[@class='h-col1 h-col1-inner3']") %>%
-#                                 html_text(trim = TRUE))}) %>%
-#bind_rows()
-
 case_df <- test$website_url[1:8] %>% 
   map(read_html) %>%
   map(function (node) {data.frame(doc = node %>% 
@@ -72,7 +62,7 @@ test_decision_text <- case_df[1:8,1] %>%
   str_extract(.,"(?<=\u0440\u0435\u0448\u0438\u043B\\:)(.*?)(?=\\n)|(?<=\u0440\\s\u0435\\s\u0448\\s\u0438\\s\u043B\\:)(.*?)(?=\\n)|(?<=\u0420\\s\u0415\\s\u0428\\s\u0418\\s\u041B\\:)(.*?)(?=\\n)|(?<=\u0420\\s\u0415\\s\u0428\\s\u0418\\s\u041B\\s\\:)(.*?)(?=\\n)|(?<=\u0420\u0415\u0428\u0418\u041B\\:)(.*?)(?=\\n)|(?<=\u041F\u041E\u0421\u0422\u0410\u041D\u041E\u0412\u0418\u041B\\:)(.*?)(?=\\n)|(?<=\u0420\u0435\u0448\u0438\u043B\\:)(.*?)(?=\\n)") %>%
   print()
 
-test_case_type <- test$case %>%
+test_case_type <- test$case[1:8] %>%
   str_extract("(?<!\\s\u2116\\s)(\\w*)") %>%
   print()
 
@@ -86,11 +76,7 @@ test_decision_state_binary <- c(0,0,1,1,0,0,0,1)
 
 #0 is with state, 1 is against state, 2 is partially against state this is manually coded
 
-#outliers (10, 20, 21, 24, 25, 29)
-
-#\u0420\u0435\u0448\u0435\u043D\u0438\u0435 ?????????????? (may be able to get rid of appeal directions or out in separate variable)
-
-sample_df <- cbind(test, case_df, test_case_type, test_court_distance, test_decision_state, test_decision_state, test_decision_text, test_judge)
+sample_df <- cbind(test[1:8,], case_df, test_case_type, test_court_distance, test_decision_state, test_decision_state, test_decision_text, test_judge)
 
 head(sample_df)
 
