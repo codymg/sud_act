@@ -15,7 +15,7 @@ library(plm)
 
 #loading scraped cases
 
-sample_df <- readRDS(url(""))
+sample_df <- readRDS(url("https://github.com/codymg/sud_act/blob/master/data/sud_act_cases_raw.rds?raw=true"))
 
 #cleaning case text
 
