@@ -9,11 +9,6 @@ library(stopwords)
 library(SnowballC)
 library(udpipe)
 library(utf8)
-library(corpus)
-library(ggwordcloud)
-library(plm)
-
-oldloc <- Sys.getlocale("LC_CTYPE") #encoding may need to be changed to account for Russian, we are preserving original ("English_United States.1252")
 
 base_url <- "http://sudact.ru/regular/doc_ajax/?page="
 
